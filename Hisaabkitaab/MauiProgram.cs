@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Hisaabkitaab.Services;
+using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
 
 namespace Hisaabkitaab
@@ -17,6 +18,8 @@ namespace Hisaabkitaab
 
             builder.Services.AddMauiBlazorWebView();
             builder.Services.AddMudServices();
+            builder.Services.AddSingleton<JsonDatabaseService>();
+
 
 
 
