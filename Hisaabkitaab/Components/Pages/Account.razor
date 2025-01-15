@@ -1,6 +1,43 @@
-﻿@page "/account"
+﻿@using MudBlazor;
+@page "/account"
+
 <h3>Account</h3>
 
-@code {
 
+<MudCard>
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Balance </MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Default" />
+            <MudCardActions>
+                <MudButton Variant="Variant.Filled" Color="Color.Dark">Transfer</MudButton>
+            </MudCardActions>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudText>Rs 500000</MudText>
+    </MudCardContent>
+    
+</MudCard>
+
+<MudCard>
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Debit</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Default" />
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudText Color="Color.Error">Rs 500000</MudText>
+
+    </MudCardContent>
+
+</MudCard>
+
+@code {
+   
 }
