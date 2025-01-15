@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
+using Hisaabkitaab.Components.Services;
 
 namespace Hisaabkitaab
 {
@@ -19,7 +20,11 @@ namespace Hisaabkitaab
 
             builder.Services.AddMauiBlazorWebView();
             builder.Services.AddMudServices();
-         
+
+            builder.Services.AddSingleton<MainPage>();
+            builder.Services.AddTransient<MainPage>();
+            builder.Services.AddSingleton<DatabaseServices>();
+
 
 
 

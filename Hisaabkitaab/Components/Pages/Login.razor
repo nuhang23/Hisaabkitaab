@@ -1,0 +1,59 @@
+﻿@page "/"
+@using MudBlazor
+@using Hisaabkitaab.Components.Model
+@using Hisaabkitaab.Components.Services
+
+<h3 class="text-center">Welcome</h3>
+<h5 class="text-center">Sign In</h5>
+
+<!-- Logo Section -->
+<div class="text-center">
+    <img src="images/logo.png" alt="Logo" class="img-fluid" width="150" />
+</div>
+
+<!-- Login Card (MudPaper) -->
+<MudPaper Elevation="5" Class="login-card mt-4 p-4" MaxWidth="xs" Style="margin: 0 auto;">
+    <!-- Email Input -->
+    <MudTextField @bind-Value="Email" Label="Email Address" Variant="Variant.Text" FullWidth Margin="Margin.Normal" />
+
+    <!-- Password Input -->
+    <MudTextField @bind-Value="Password" Label="Password" Variant="Variant.Text" FullWidth Margin="Margin.Normal" InputType="InputType.Password" />
+
+    <!-- Sign In Button -->
+    <MudButton Variant="Variant.Filled" Color="Color.Dark" FullWidth OnClick="HandleSignIn" Class="mt-4">Sign In</MudButton>
+</MudPaper>
+
+@code {
+    [Inject]
+    private DatabaseServices DbService { get; set; }
+
+    private string Email { get; set; }
+    private string Password { get; set; }
+
+    private async Task HandleSignIn()
+    {
+        // Ensure both email and password are provided
+        if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password))
+        {
+            // You can show an error dialog or message here for empty inputs
+            Console.WriteLine("Email and Password are required.");
+            return;
+        }
+
+        // Create a new user object with the provided email and password
+        var user = new User
+            {
+                Email = Email,
+                Password = Password
+            };
+
+        // Add the user to the database
+        await DbService.AddUserAsync(user);
+
+        // Optionally, you can navigate to another page
+        Console.WriteLine("User added successfully!");
+
+        // For now, you can just print the info or navigate
+        // NavigationManager.NavigateTo("/dashboard");
+    }
+}
