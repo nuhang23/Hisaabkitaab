@@ -3,6 +3,18 @@
 
 <h3>Account</h3>
 
+<MudAppBar Color="Color.Primary" Fixed="true">
+    <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
+    <MudSpacer />
+</MudAppBar>
+<MudDrawer @bind-Open="drawerOpen" Anchor="Anchor.Left" Color="Color.Dark" Elevation="4">
+    <MudNavMenu>
+        <MudNavLink Href="/dashboard" Match="NavLinkMatch.All">Dashboard</MudNavLink>
+        <MudNavLink Href="/account" Match="NavLinkMatch.Prefix">Account</MudNavLink>
+        <MudNavLink Href="/transactions" Match="NavLinkMatch.Prefix">Transaction</MudNavLink>
+    </MudNavMenu>
+</MudDrawer>
+
 
 <MudCard>
     <MudCardHeader>
@@ -39,5 +51,11 @@
 </MudCard>
 
 @code {
+    private bool drawerOpen = false;
+
+    private void ToggleDrawer()
+    {
+        drawerOpen = !drawerOpen;
+    }
    
 }

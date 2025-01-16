@@ -3,61 +3,80 @@
 @using Hisaabkitaab.Components.Model
 @using Hisaabkitaab.Components.Services
 
-<h3 class="text-center">Welcome</h3>
-<h5 class="text-center">Sign In</h5>
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4 mx-auto mt-10">
+    <MudGrid>
+        <MudItem xs="6" md="6">
+            <MudText Typo="Typo.h4" Style="color: black; margin-left: 250px;">Welcome to</MudText>
+            <MudImage Src="logo.png" Height="480" Width="480" Alt="Logo" Class="rounded-lg mt-3" />
+        </MudItem>
+        <MudItem xs="6" md="6" Class="p-4 mt-5">
+            <MudPaper Class="p-6" Style="box-shadow: none;">
+                <MudText Typo="Typo.h5" Align="Align.Left" Style="color: black;">Sign in</MudText>       
+                <MudForm Class="mt-5 mb-5" Style="padding: 20px;" OnValidSubmit="handleLogin">
+                    <MudTextField Variant="Variant.Filled" T="string" @bind-Value="Email" Label="Email" FullWidth="false" style="margin-bottom: 20px;" />
+                    <MudTextField Variant="Variant.Filled" T="string" @bind-Value="Password" Label="Password" FullWidth="false" Style="margin-bottom: 20px;" />
 
-<!-- Logo Section -->
-<div class="text-center">
-    <img src="images/logo.png" alt="Logo" class="img-fluid" width="150" />
-</div>
-
-<!-- Login Card (MudPaper) -->
-<MudPaper Elevation="5" Class="login-card mt-4 p-4" MaxWidth="xs" Style="margin: 0 auto;">
-    <!-- Email Input -->
-    <MudTextField @bind-Value="Email" Label="Email Address" Variant="Variant.Text" FullWidth Margin="Margin.Normal" />
-
-    <!-- Password Input -->
-    <MudTextField @bind-Value="Password" Label="Password" Variant="Variant.Text" FullWidth Margin="Margin.Normal" InputType="InputType.Password" />
-
-    <!-- Sign In Button -->
-    <MudButton Variant="Variant.Filled" Color="Color.Dark" FullWidth OnClick="HandleSignIn" Class="mt-4">Sign In</MudButton>
-</MudPaper>
+                    <MudButton Variant="Variant.Text" Style="color: black; text-transform: none; margin-bottom: 10px; margin-left:auto;">
+                        Forgot password?
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" @onclick="HandleLogin" Style="background-color: black; color: white; margin-top: 10px;" FullWidth="true" Class="mb-3">
+                        Sign in
+                    </MudButton>
+                    <MudButton Variant="Variant.Text" @onclick="GoToRegister" Style="text-transform: none; color: black;">
+                        Create new account
+                    </MudButton>
+                </MudForm>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
 
 @code {
-    [Inject]
-    private DatabaseServices DbService { get; set; }
-    [Inject]
-    private NavigationManager  navigationManager{ get; set; }
+        [Inject]
+        private NavigationManager Navigation { get; set; }
+        [Inject]
+    private DatabaseServices DbService { get; set; }             [Inject]
+    private IDialogService DialogService { get; set; }
 
-    private string Email { get; set; }
-    private string Password { get; set; }
+    private string Email;
+    private string Password;
 
-    private async Task HandleSignIn()
+
+    private async Task HandleLogin()
     {
-
-        navigationManager.NavigateTo("/dashboard");
-        // Ensure both email and password are provided
         if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password))
         {
-            // You can show an error dialog or message here for empty inputs
-            Console.WriteLine("Email and Password are required.");
+            await DialogService.ShowMessageBox("Error", "Email and Password are required.");
             return;
         }
 
-        // Create a new user object with the provided email and password
-        var user = new User
+        try
+        {
+            var user = await DbService.GetUserByEmailAsync(Email);
+
+            if (user == null)
             {
-                Email = Email,
-                Password = Password
-            };
+                await DialogService.ShowMessageBox("Error", "User not found.");
+                return;
+            }
 
-        // Add the user to the database
-        await DbService.AddUserAsync(user);
+            if (Password != user.Password)
+            {
+                await DialogService.ShowMessageBox("Error", "Invalid password.");
+                return;
+            }
 
-        // Optionally, you can navigate to another page
-        Console.WriteLine("User added successfully!");
+            await DialogService.ShowMessageBox("Success", "Login successful!");
+            Navigation.NavigateTo("/dashboard");
+        }
+        catch (Exception ex)
+        {
+            await DialogService.ShowMessageBox("Error", $"An error occurred: {ex.Message}");
+        }
+    }
 
-        // For now, you can just print the info or navigate
-        // NavigationManager.NavigateTo("/dashboard");
+    private void GoToRegister()
+    {
+        Navigation.NavigateTo("/register");
     }
 }

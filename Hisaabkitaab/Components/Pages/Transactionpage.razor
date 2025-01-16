@@ -3,136 +3,179 @@
 @using Hisaabkitaab.Components.Model
 @using Hisaabkitaab.Components.Services
 
+<MudAppBar Color="Color.Primary" Fixed="true">
+    <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
+    <MudSpacer />
+</MudAppBar>
+
+<MudDrawer @bind-Open="drawerOpen" Anchor="Anchor.Left" Color="Color.Dark" Elevation="4">
+    <MudNavMenu>
+        <MudNavLink Href="/dashboard" Match="NavLinkMatch.All">Dashboard</MudNavLink>
+        <MudNavLink Href="/account" Match="NavLinkMatch.Prefix">Account</MudNavLink>
+        <MudNavLink Href="/transactions" Match="NavLinkMatch.Prefix">Transaction</MudNavLink>
+    </MudNavMenu>
+</MudDrawer>
+
 <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4 mx-auto mt-10">
     <!-- Transaction Cards -->
     <MudGrid>
         <!-- Income Card -->
-        <MudItem xs="12" md="6">
+        <MudItem xs="12">
             <MudCard>
                 <MudCardHeader>
-                    <MudText Typo="Typo.h6">Income Transactions</MudText>
+                    <MudText Typo="Typo.h6">Income</MudText>
                 </MudCardHeader>
                 <MudCardContent>
-                    @foreach (var transaction in incomeTransactions)
-                    {
-                        <MudListItem T="Transactions">
-                            <MudText>@transaction.Title</MudText>
-                            <MudText>@transaction.Amount</MudText>
-                        </MudListItem>
-                    }
-                    <!-- Button to open form for adding new income -->
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth @onclick="ShowAddIncomeForm">Add Income</MudButton>
+                    <MudTable Items="incomeTransactions">
+                        <HeaderContent>
+                            <MudTh>Title</MudTh>
+                            <MudTh>Amount</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.Title</MudTd>
+                            <MudTd Style="color: green;">@context.Amount</MudTd>
+                        </RowTemplate>
+                    </MudTable>
                 </MudCardContent>
             </MudCard>
         </MudItem>
 
         <!-- Expense Card -->
-        <MudItem xs="12" md="6">
+        <MudItem xs="12" class="mt-4">
             <MudCard>
                 <MudCardHeader>
-                    <MudText Typo="Typo.h6">Expense Transactions</MudText>
+                    <MudText Typo="Typo.h6">Expense</MudText>
                 </MudCardHeader>
                 <MudCardContent>
-                    @foreach (var transaction in expenseTransactions)
-                    {
-                        <MudListItem T="Transactions">
-                            <MudText>@transaction.Title</MudText>
-                            <MudText>@transaction.Amount</MudText>
-                        </MudListItem>
-                    }
-                    <!-- Button to open form for adding new expense -->
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth @onclick="ShowAddExpenseForm">Add Expense</MudButton>
+                    <MudTable Items="expenseTransactions">
+                        <HeaderContent>
+                            <MudTh>Title</MudTh>
+                            <MudTh>Amount</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.Title</MudTd>
+                            <MudTd Style="color: red;">@context.Amount</MudTd>
+                        </RowTemplate>
+                    </MudTable>
                 </MudCardContent>
             </MudCard>
         </MudItem>
     </MudGrid>
-
-    <!-- Add Transaction Form Dialog -->
-    @if (isAddTransactionDialogOpen)
-    {
-        <MudDialog @bind-Open="isAddTransactionDialogOpen">
-            <MudDialogTitle>Add New Transaction</MudDialogTitle>
-            <MudDialogContent>
-                <MudTextField @bind-Value="Title" Label="Title" Variant="Variant.Filled" FullWidth />
-                <MudTextField @bind-Value="Amount" Label="Amount" Variant="Variant.Filled" FullWidth />
-                <MudTextField @bind-Value="TransactionType" Label="Transaction Type" Variant="Variant.Filled" FullWidth />
-                <MudTextField @bind-Value="Note" Label="Note (Optional)" Variant="Variant.Filled" FullWidth />
-            </MudDialogContent>
-            <MudDialogActions>
-                <MudButton OnClick="AddTransaction" Variant="Variant.Filled" Color="Color.Primary">Add</MudButton>
-                <MudButton OnClick="CloseAddTransactionDialog" Variant="Variant.Text">Cancel</MudButton>
-            </MudDialogActions>
-        </MudDialog>
-    }
 </MudContainer>
 
-@code {
-    [Inject] private NavigationManager Navigation { get; set; }
-    [Inject] private DatabaseServices DbService { get; set; }
-    [Inject] private IDialogService DialogService { get; set; }
+    <!-- Add Transaction Button -->
+    <MudGrid>
+        <MudItem xs="12" class="mt-4">
+        <MudButton Variant="Variant.Filled" Color="Color.Dark" @onclick="ToggleFormVisibility" Style="background-color: black; color: white; width: 200px; margin: 0 auto; display: block;">
+            Add Transaction
+        </MudButton>
+      
+           
+        </MudItem>
+    </MudGrid>
 
-    private string Income = "Income";
-    private string Expense = "Expense";
+    <!-- Form for Adding Transaction -->
+    @if (isFormVisible)
+    {
+        <MudGrid class="mt-4">
+            <MudItem xs="12">
+                <MudCard>
+                    <MudCardHeader>
+                        <MudText Typo="Typo.h6">Add New Transaction</MudText>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudTextField @bind-Value="Title" Label="Title" Variant="Variant.Filled" FullWidth />
+
+                        <!-- Select Transaction Type -->
+                        <MudSelect @bind-Value="TransactionType" Label="Transaction Type" Variant="Variant.Filled" FullWidth class="mt-3">
+                            <MudSelectItem Value="Income">Income</MudSelectItem>
+                            <MudSelectItem Value="Expense">Expense</MudSelectItem>
+                        </MudSelect>
+
+                        <MudTextField @bind-Value="Amount" Label="Amount" Variant="Variant.Filled" FullWidth class="mt-3" />
+                        <MudTextField @bind-Value="Note" Label="Note (Optional)" Variant="Variant.Filled" FullWidth class="mt-3" />
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton OnClick="SubmitTransaction" Variant="Variant.Filled" Color="Color.Primary" Style="background-color: black; color: white;">Submit</MudButton>
+                        <MudButton OnClick="CancelForm" Variant="Variant.Text">Cancel</MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+
+
+@code {
+    string Income = "Income";
+    string Expense = "Expense";
+    private bool drawerOpen = false;
+    private bool isFormVisible = false;
 
     private string Title { get; set; }
-    private double Amount { get; set; }
     private string TransactionType { get; set; }
+    private double Amount { get; set; }
     private string Note { get; set; }
-    private int UserId { get; set; }
-    
+
     private List<Transactions> incomeTransactions = new List<Transactions>();
     private List<Transactions> expenseTransactions = new List<Transactions>();
-    private bool isAddTransactionDialogOpen = false;
+
+    [Inject] private DatabaseServices DbService { get; set; }
+
+    private void ToggleDrawer()
+    {
+        drawerOpen = !drawerOpen;
+    }
 
     protected override async Task OnInitializedAsync()
     {
         // Initialize transactions
-        incomeTransactions = await DbService.GetTransactionsByTypeAsync(Income);
-        expenseTransactions = await DbService.GetTransactionsByTypeAsync(Expense);
+        incomeTransactions = await DbService.GetTransactionsByTypeAsync("Income");
+        expenseTransactions = await DbService.GetTransactionsByTypeAsync("Expense");
     }
 
-    private void ShowAddIncomeForm()
+    // Toggle visibility of the form
+    private void ToggleFormVisibility()
     {
-        Title = string.Empty;
-        Amount = 0;
-        TransactionType = Income;
-        isAddTransactionDialogOpen = true;
+        isFormVisible = !isFormVisible;
     }
 
-    private void ShowAddExpenseForm()
+    // Submit the transaction form
+    private async Task SubmitTransaction()
     {
-        Title = string.Empty;
-        Amount = 0;
-        TransactionType = Expense;
-        isAddTransactionDialogOpen = true;
-    }
-
-    private async Task AddTransaction()
-    {
-        // Set the current time for CreatedAt and UpdatedAt
-        var newTransaction = new Transactions
+        // Validate inputs
+        if (string.IsNullOrEmpty(Title) || Amount == 0 || string.IsNullOrEmpty(TransactionType))
         {
-            UserId = UserId,  // Assuming UserId is already set (you can fetch it from authentication)
-            Title = Title,
-            Amount = Amount,
-            TransactionType = TransactionType,
-            CreatedAt = DateTime.Now,
-            UpdatedAt = DateTime.Now,
-            Note = Note
-        };
+            // Optionally show validation error
+            return;
+        }
 
-        // Save the transaction in the database
+        var newTransaction = new Transactions
+            {
+                Title = Title,
+                Amount = Amount,
+                TransactionType = TransactionType,
+                Note = Note,
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
+            };
+
         await DbService.CreateTransaction(newTransaction);
 
-        // Refresh transactions
-        incomeTransactions = await DbService.GetTransactionsByTypeAsync(Income);
-        expenseTransactions = await DbService.GetTransactionsByTypeAsync(Expense);
+        // Refresh the list after submission
+        incomeTransactions = await DbService.GetTransactionsByTypeAsync("Income");
+        expenseTransactions = await DbService.GetTransactionsByTypeAsync("Expense");
 
-        isAddTransactionDialogOpen = false; // Close the dialog
+        // Reset form and hide it
+        CancelForm();
     }
 
-    private void CloseAddTransactionDialog()
+    // Cancel form
+    private void CancelForm()
     {
-        isAddTransactionDialogOpen = false; // Close the dialog
+        isFormVisible = false;
+        Title = string.Empty;
+        Amount = 0;
+        TransactionType = string.Empty;
+        Note = string.Empty;
     }
 }

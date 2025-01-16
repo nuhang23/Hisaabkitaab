@@ -34,24 +34,53 @@ namespace Hisaabkitaab.Components.Services
         }
 
         // Asynchronous method to add a user to the database
-        public async Task AddUserAsync(User user)
+        public async Task CreateUser(User user)
+        {
+            await connection.InsertAsync(user);
+        }
+        public async Task<User> GetUserByEmailAsync(string email)
+        {
+            return await connection.Table<User>().FirstOrDefaultAsync(u => u.Email == email);
+        }
+        public async Task UpdateUser(User user)
+        {
+            await connection.UpdateAsync(user);
+        }
+
+
+        public async Task CreateTransaction(Transactions newTransaction)
         {
             try
             {
-                // Insert user asynchronously into the User table
-                await connection.InsertAsync(user);
+                // Insert the new transaction into the database
+                await connection.InsertAsync(newTransaction);
             }
             catch (Exception ex)
             {
                 // Handle any errors (e.g., database connectivity issues)
-                Console.WriteLine($"Error inserting user: {ex.Message}");
+                Console.WriteLine($"Error inserting transaction: {ex.Message}");
             }
         }
 
-        // Method to create a user (this can be kept if you prefer synchronous operations)
-        public async Task CreateUser(User user)
+        // Method to get all transactions of a specific type (e.g., "Income" or "Expense")
+        public async Task<List<Transactions>> GetTransactionsByTypeAsync(string transactionType)
         {
-            await connection.InsertAsync(user);
+            try
+            {
+                // Fetch transactions that match the given type
+                var transactions = await connection.Table<Transactions>()
+                    .Where(t => t.TransactionType == transactionType)
+                    .ToListAsync();
+
+                return transactions;
+            }
+            catch (Exception ex)
+            {
+                // Handle any errors (e.g., database connectivity issues)
+                Console.WriteLine($"Error fetching transactions: {ex.Message}");
+                return new List<Transactions>();
+            }
+
         }
     }
 }

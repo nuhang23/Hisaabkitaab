@@ -1,0 +1,108 @@
+﻿@page "/register"
+@using Hisaabkitaab.Components.Model;
+@using MudBlazor;
+@using Hisaabkitaab.Components.Services;
+@using System.ComponentModel.DataAnnotations;
+
+
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4 mx-auto mt-10">
+    <MudGrid>
+        <MudItem xs="6" md="6">
+            <MudText Typo="Typo.h4" Style="color: #03989e; margin-left: 150px;">Welcome to</MudText>
+            <MudImage Src="logo.png" Height="480" Width="480" Alt="Logo" Class="rounded-lg mt-3" />
+        </MudItem>
+        <MudItem xs="6" md="6" Class="p-4 mt-5">
+            <MudPaper Class="p-6" Style="box-shadow: none;">
+                <MudText Typo="Typo.h5" Align="Align.Left" Style="color: #03989e;">Registration</MudText>
+                <MudForm Class="mt-5 mb-5" Style="padding: 20px;" OnValidSubmit="SignUp">
+                    <MudTextField Variant="Variant.Filled" T="string" Label="Username" FullWidth="true"
+                                  @bind-Value="Username" style="margin-bottom: 20px;" />
+                    <MudTextField Variant="Variant.Filled" T="string" Label="Email" FullWidth="true"
+                                  @bind-Value="Email" style="margin-bottom: 20px;" />
+                    <MudTextField Variant="Variant.Filled" T="string" Label="Password" FullWidth="true"
+                                  @bind-Value="Password" InputType="InputType.Password" style="margin-bottom: 20px;" />
+                    <MudTextField Variant="Variant.Filled" T="string" Label="Confirm Password" FullWidth="true"
+                                  @bind-Value="ConfirmPassword" InputType="InputType.Password" style="margin-bottom: 20px;" />
+
+                    <MudSelect @bind-Value="SelectedCurrency"
+                               Variant="Variant.Outlined"
+                               Label="Currency" FullWidth="true">
+                        @foreach (var currency in Currencies)
+                        {
+                            <MudSelectItem Value="@currency">@currency</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudButton Variant="Variant.Filled" @onclick="SignUp" Style="background-color: #03989e; color: white; margin-top: 10px;" FullWidth="true" Class="mb-3">
+                        Sign Up
+                    </MudButton>
+                    <MudButton Variant="Variant.Text" @onclick="GoToLogin" Style="text-transform: none; color: #03989e;">
+                        Already have an account? Login
+                    </MudButton>
+                </MudForm>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    [Inject] private NavigationManager Navigation { get; set; }
+    [Inject] private DatabaseServices DbService { get; set; }
+    [Inject] private IDialogService DialogService { get; set; }
+
+    private string Username { get; set; }
+    private string Email { get; set; }
+    private string Password { get; set; }
+    private string ConfirmPassword { get; set; }
+    private string SelectedCurrency { get; set; }
+
+    private readonly string[] Currencies =
+    {
+        "Nepalese Rupees (RS)", "US Dollar (USD)", "Euro (EUR)", "British Pound (GBP)",
+        "Japanese Yen (JPY)", "Australian Dollar (AUD)", "Canadian Dollar (CAD)",
+        "Swiss Franc (CHF)", "Chinese Yuan (CNY)", "Swedish Krona (SEK)"
+    };
+
+    private async Task SignUp()
+    {
+        if (string.IsNullOrWhiteSpace(Username) ||
+            string.IsNullOrWhiteSpace(Email) ||
+            string.IsNullOrWhiteSpace(Password) ||
+            string.IsNullOrWhiteSpace(SelectedCurrency))
+        {
+            await DialogService.ShowMessageBox("Error", "All fields are required.");
+            return;
+        }
+
+        if (Password != ConfirmPassword)
+        {
+            await DialogService.ShowMessageBox("Error", "Passwords do not match.");
+            return;
+        }
+
+        if (!new EmailAddressAttribute().IsValid(Email))
+        {
+            await DialogService.ShowMessageBox("Error", "Invalid email format.");
+            return;
+        }
+
+        var newUser = new User
+            {
+                Username = Username,
+                Email = Email,
+                Password = Password,
+                Currency = SelectedCurrency
+            };
+
+
+        DbService.CreateUser(newUser);
+        await DialogService.ShowMessageBox("Success", "Registration successful!");
+        Navigation.NavigateTo("/");
+    }
+
+    private void GoToLogin()
+    {
+        Navigation.NavigateTo("/");
+    }
+}
