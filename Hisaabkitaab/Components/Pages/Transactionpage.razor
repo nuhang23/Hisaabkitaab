@@ -17,23 +17,27 @@
 </MudDrawer>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4 mx-auto mt-10">
-    <!-- Transaction Cards -->
+    <!-- Transaction Cards and Tables -->
     <MudGrid>
         <!-- Income Card -->
-        <MudItem xs="12">
+        <MudItem xs="12" sm="6">
             <MudCard>
                 <MudCardHeader>
-                    <MudText Typo="Typo.h6">Income</MudText>
+                    <MudText Typo="Typo.h6">Income Transactions</MudText>
                 </MudCardHeader>
                 <MudCardContent>
-                    <MudTable Items="incomeTransactions">
+                    <MudTable Items="incomeTransactions" Hover="true" Bordered="true">
                         <HeaderContent>
                             <MudTh>Title</MudTh>
                             <MudTh>Amount</MudTh>
+                            <MudTh>Note</MudTh>
+                            <MudTh>Created At</MudTh>
                         </HeaderContent>
                         <RowTemplate>
-                            <MudTd>@context.Title</MudTd>
-                            <MudTd Style="color: green;">@context.Amount</MudTd>
+                            <MudTd DataLabel="Title">@context.Title</MudTd>
+                            <MudTd DataLabel="Amount">@context.Amount</MudTd>
+                            <MudTd DataLabel="Note">@context.Note</MudTd>
+                            <MudTd DataLabel="Created At">@context.CreatedAt.ToString("MM/dd/yyyy")</MudTd>
                         </RowTemplate>
                     </MudTable>
                 </MudCardContent>
@@ -41,20 +45,24 @@
         </MudItem>
 
         <!-- Expense Card -->
-        <MudItem xs="12" class="mt-4">
+        <MudItem xs="12" sm="6">
             <MudCard>
                 <MudCardHeader>
-                    <MudText Typo="Typo.h6">Expense</MudText>
+                    <MudText Typo="Typo.h6">Expense Transactions</MudText>
                 </MudCardHeader>
                 <MudCardContent>
-                    <MudTable Items="expenseTransactions">
+                    <MudTable Items="expenseTransactions" Hover="true" Bordered="true">
                         <HeaderContent>
                             <MudTh>Title</MudTh>
                             <MudTh>Amount</MudTh>
+                            <MudTh>Note</MudTh>
+                            <MudTh>Created At</MudTh>
                         </HeaderContent>
                         <RowTemplate>
-                            <MudTd>@context.Title</MudTd>
-                            <MudTd Style="color: red;">@context.Amount</MudTd>
+                            <MudTd DataLabel="Title">@context.Title</MudTd>
+                            <MudTd DataLabel="Amount">@context.Amount</MudTd>
+                            <MudTd DataLabel="Note">@context.Note</MudTd>
+                            <MudTd DataLabel="Created At">@context.CreatedAt.ToString("MM/dd/yyyy")</MudTd>
                         </RowTemplate>
                     </MudTable>
                 </MudCardContent>
@@ -63,89 +71,87 @@
     </MudGrid>
 </MudContainer>
 
-    <!-- Add Transaction Button -->
-    <MudGrid>
-        <MudItem xs="12" class="mt-4">
+<MudGrid>
+    <MudItem xs="12" class="mt-4">
         <MudButton Variant="Variant.Filled" Color="Color.Dark" @onclick="ToggleFormVisibility" Style="background-color: black; color: white; width: 200px; margin: 0 auto; display: block;">
             Add Transaction
         </MudButton>
-      
-           
+    </MudItem>
+</MudGrid>
+
+@if (isFormVisible)
+{
+    <MudGrid class="mt-4">
+        <MudItem xs="12">
+            <MudCard>
+                <MudCardHeader>
+                    <MudText Typo="Typo.h6">Add New Transaction</MudText>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudTextField @bind-Value="Title" Label="Title" Variant="Variant.Filled" FullWidth />
+
+                    <!-- Select Transaction Type -->
+                    <MudSelect @bind-Value="TransactionType" Label="Transaction Type" Variant="Variant.Filled" FullWidth class="mt-3">
+                        <MudSelectItem Value="Income">Income</MudSelectItem>
+                        <MudSelectItem Value="Expense">Expense</MudSelectItem>
+                    </MudSelect>
+
+                    <MudTextField @bind-Value="Amount" Label="Amount" Variant="Variant.Filled" FullWidth class="mt-3" />
+                    <MudTextField @bind-Value="Note" Label="Note (Optional)" Variant="Variant.Filled" FullWidth class="mt-3" />
+
+                    <!-- Tag Input Section -->
+                    <MudTextField @bind-Value="TagInput" Label="Enter or Select Tag" Variant="Variant.Filled" FullWidth class="mt-3" />
+
+                    <!-- Tag Selection with MudSelect -->
+                    <MudSelect T="Tag" @bind-Value="SelectedTag" Label="Select Existing Tag" FullWidth class="mt-3">
+                        @foreach (var tag in allTags)
+                        {
+                            <MudSelectItem T="Tag" Value="tag">@tag.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton OnClick="SubmitTransaction" Variant="Variant.Filled" Color="Color.Primary" Style="background-color: black; color: white;">Submit</MudButton>
+                    <MudButton OnClick="CancelForm" Variant="Variant.Text">Cancel</MudButton>
+                </MudCardActions>
+            </MudCard>
         </MudItem>
     </MudGrid>
-
-    <!-- Form for Adding Transaction -->
-    @if (isFormVisible)
-    {
-        <MudGrid class="mt-4">
-            <MudItem xs="12">
-                <MudCard>
-                    <MudCardHeader>
-                        <MudText Typo="Typo.h6">Add New Transaction</MudText>
-                    </MudCardHeader>
-                    <MudCardContent>
-                        <MudTextField @bind-Value="Title" Label="Title" Variant="Variant.Filled" FullWidth />
-
-                        <!-- Select Transaction Type -->
-                        <MudSelect @bind-Value="TransactionType" Label="Transaction Type" Variant="Variant.Filled" FullWidth class="mt-3">
-                            <MudSelectItem Value="Income">Income</MudSelectItem>
-                            <MudSelectItem Value="Expense">Expense</MudSelectItem>
-                        </MudSelect>
-
-                        <MudTextField @bind-Value="Amount" Label="Amount" Variant="Variant.Filled" FullWidth class="mt-3" />
-                        <MudTextField @bind-Value="Note" Label="Note (Optional)" Variant="Variant.Filled" FullWidth class="mt-3" />
-                    </MudCardContent>
-                    <MudCardActions>
-                        <MudButton OnClick="SubmitTransaction" Variant="Variant.Filled" Color="Color.Primary" Style="background-color: black; color: white;">Submit</MudButton>
-                        <MudButton OnClick="CancelForm" Variant="Variant.Text">Cancel</MudButton>
-                    </MudCardActions>
-                </MudCard>
-            </MudItem>
-        </MudGrid>
-    }
-
+}
 
 @code {
-    string Income = "Income";
-    string Expense = "Expense";
-    private bool drawerOpen = false;
-    private bool isFormVisible = false;
+    private string Income = "Income";
+    private string Expense = "Expense";
 
     private string Title { get; set; }
     private string TransactionType { get; set; }
     private double Amount { get; set; }
     private string Note { get; set; }
+    private string TagInput { get; set; }
+    private Tag SelectedTag { get; set; } // Keep it null
+
+    private bool isFormVisible = false;
+    private bool drawerOpen = false;
 
     private List<Transactions> incomeTransactions = new List<Transactions>();
     private List<Transactions> expenseTransactions = new List<Transactions>();
+    private List<Tag> allTags = new List<Tag>();
 
     [Inject] private DatabaseServices DbService { get; set; }
 
-    private void ToggleDrawer()
+    // Method to search tags
+    private async Task<List<Tag>> SearchTags(string value)
     {
-        drawerOpen = !drawerOpen;
+        var tags = await DbService.GetAllTagsAsync();
+        return tags.Where(t => t.Name.Contains(value, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
-    protected override async Task OnInitializedAsync()
-    {
-        // Initialize transactions
-        incomeTransactions = await DbService.GetTransactionsByTypeAsync("Income");
-        expenseTransactions = await DbService.GetTransactionsByTypeAsync("Expense");
-    }
-
-    // Toggle visibility of the form
-    private void ToggleFormVisibility()
-    {
-        isFormVisible = !isFormVisible;
-    }
-
-    // Submit the transaction form
+    // Method to submit the transaction
+    // Method to submit the transaction
     private async Task SubmitTransaction()
     {
-        // Validate inputs
         if (string.IsNullOrEmpty(Title) || Amount == 0 || string.IsNullOrEmpty(TransactionType))
         {
-            // Optionally show validation error
             return;
         }
 
@@ -159,17 +165,50 @@
                 UpdatedAt = DateTime.Now
             };
 
+        // Create the transaction in the database
         await DbService.CreateTransaction(newTransaction);
 
-        // Refresh the list after submission
-        incomeTransactions = await DbService.GetTransactionsByTypeAsync("Income");
-        expenseTransactions = await DbService.GetTransactionsByTypeAsync("Expense");
+        // Handle the tag input or selected tag
+        Tag tagToLink = null;
 
-        // Reset form and hide it
+        // Check if the user entered a new tag
+        if (!string.IsNullOrEmpty(TagInput))
+        {
+            var existingTag = await DbService.GetTagByNameAsync(TagInput);
+
+            if (existingTag == null)
+            {
+                // Create a new tag if it doesn't exist
+                var newTag = new Tag { Name = TagInput, CreatedAt = DateTime.Now };
+                await DbService.CreateTagAsync(newTag);
+                tagToLink = newTag;
+            }
+            else
+            {
+                tagToLink = existingTag; // Use the existing tag
+            }
+        }
+        else if (SelectedTag != null)
+        {
+            // If the user selects an existing tag, link it
+            tagToLink = SelectedTag;
+        }
+
+        // Link the transaction with the tag (if a tag was selected or created)
+        if (tagToLink != null)
+        {
+            await DbService.LinkTransactionWithTag(newTransaction.Id, tagToLink.Id);
+        }
+
+        // Refresh the transactions list after submission
+        incomeTransactions = await DbService.GetTransactionsByTypeAsync(Income);
+        expenseTransactions = await DbService.GetTransactionsByTypeAsync(Expense);
+
+        // Reset form fields
         CancelForm();
     }
 
-    // Cancel form
+    // Method to cancel the form and reset fields
     private void CancelForm()
     {
         isFormVisible = false;
@@ -177,5 +216,27 @@
         Amount = 0;
         TransactionType = string.Empty;
         Note = string.Empty;
+        TagInput = string.Empty;
+        SelectedTag = null; // Keep it null after cancellation
+    }
+
+    // Method to toggle the drawer
+    private void ToggleDrawer()
+    {
+        drawerOpen = !drawerOpen;
+    }
+
+    // Initialize the page by loading transactions and tags
+    protected override async Task OnInitializedAsync()
+    {
+        incomeTransactions = await DbService.GetTransactionsByTypeAsync(Income);
+        expenseTransactions = await DbService.GetTransactionsByTypeAsync(Expense);
+        allTags = await DbService.GetAllTagsAsync();
+    }
+
+    // Method to toggle the visibility of the form
+    private void ToggleFormVisibility()
+    {
+        isFormVisible = !isFormVisible;
     }
 }

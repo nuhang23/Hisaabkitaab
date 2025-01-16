@@ -1,7 +1,9 @@
 ﻿using Hisaabkitaab.Components.Model;
-using Microsoft.Maui.Controls;
 using SQLite;
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Hisaabkitaab.Components.Services
@@ -16,7 +18,7 @@ namespace Hisaabkitaab.Components.Services
             SQLitePCL.Batteries.Init();
 
             // Define the path for the database file
-            string dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Hisaabkitaab", "Hisaabkitaab.db");
+            string dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Hisaabkitaab", DB_NAME);
 
             // Create directory if it doesn't exist
             Directory.CreateDirectory(Path.GetDirectoryName(dbPath));
@@ -24,30 +26,33 @@ namespace Hisaabkitaab.Components.Services
             // Initialize SQLite connection with ReadWrite flags
             connection = new SQLiteAsyncConnection(dbPath, SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create);
 
-            // Create the User table if it doesn't already exist
+            // Create necessary tables if they don't already exist
             connection.CreateTableAsync<User>().Wait();
-            // You can uncomment and create additional tables if required, e.g., Transactions, Debt, etc.
-            // connection.CreateTableAsync<Transaction>().Wait();
-            // connection.CreateTableAsync<Debt>().Wait();
-            // connection.CreateTableAsync<TransactionTag>().Wait();
-            // connection.CreateTableAsync<Tag>().Wait();
+            connection.CreateTableAsync<Transactions>().Wait();
+            connection.CreateTableAsync<Debt>().Wait();
+            connection.CreateTableAsync<Tag>().Wait(); // Ensure the Tag table is created
+            connection.CreateTableAsync<TransactionTag>().Wait(); // Ensure the TransactionTag table is created
         }
 
-        // Asynchronous method to add a user to the database
+        // Asynchronous method to create a user
         public async Task CreateUser(User user)
         {
             await connection.InsertAsync(user);
         }
+
+        // Method to get user by email
         public async Task<User> GetUserByEmailAsync(string email)
         {
             return await connection.Table<User>().FirstOrDefaultAsync(u => u.Email == email);
         }
+
+        // Asynchronous method to update user
         public async Task UpdateUser(User user)
         {
             await connection.UpdateAsync(user);
         }
 
-
+        // Asynchronous method to create a new transaction
         public async Task CreateTransaction(Transactions newTransaction)
         {
             try
@@ -59,6 +64,21 @@ namespace Hisaabkitaab.Components.Services
             {
                 // Handle any errors (e.g., database connectivity issues)
                 Console.WriteLine($"Error inserting transaction: {ex.Message}");
+            }
+        }
+
+        // Asynchronous method to update an existing transaction
+        public async Task UpdateTransaction(Transactions updatedTransaction)
+        {
+            try
+            {
+                // Update the existing transaction in the database
+                await connection.UpdateAsync(updatedTransaction);
+            }
+            catch (Exception ex)
+            {
+                // Handle any errors (e.g., database connectivity issues)
+                Console.WriteLine($"Error updating transaction: {ex.Message}");
             }
         }
 
@@ -80,7 +100,155 @@ namespace Hisaabkitaab.Components.Services
                 Console.WriteLine($"Error fetching transactions: {ex.Message}");
                 return new List<Transactions>();
             }
-
         }
+
+        // Asynchronous method to save debt to the database
+        public async Task SaveDebtAsync(Debt debt)
+        {
+            await connection.InsertAsync(debt);
+        }
+
+        // Asynchronous method to update debt in the database
+        public async Task UpdateDebtAsync(Debt debt)
+        {
+            await connection.UpdateAsync(debt); // Update existing debt (for transferring funds)
+        }
+
+        // Method to calculate the balance by fetching income, expenses, and debts
+        public async Task<double> GetBalanceAsync(int userId)
+        {
+            try
+            {
+                // Fetch total income and total expenses for the specific user
+                double totalIncome = await GetTotalIncomeAsync(userId);
+                double totalExpenses = await GetTotalExpensesAsync(userId);
+
+                // Fetch total debt for the specific user
+                double totalDebt = await GetTotalDebtAsync(userId);
+
+                // Calculate balance (Income - Expenses + Debts)
+                double balance = totalIncome - totalExpenses + totalDebt;
+
+                return balance;
+            }
+            catch (Exception ex)
+            {
+                // Handle errors (e.g., database connectivity issues)
+                Console.WriteLine($"Error calculating balance: {ex.Message}");
+                return 0;  // Return 0 if any error occurs
+            }
+        }
+
+
+        // Method to get total income for a specific user
+        public async Task<double> GetTotalIncomeAsync(int userId)
+        {
+            try
+            {
+                // Fetch transactions of type "Income" for the specific user and sum the amounts
+                var incomeTransactions = await connection.Table<Transactions>()
+                    .Where(t => t.TransactionType == "Income" && t.UserId == userId)
+                    .ToListAsync();
+
+                return incomeTransactions.Sum(t => t.Amount);  // Return the sum of amounts
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching total income: {ex.Message}");
+                return 0;  // Return 0 if any error occurs
+            }
+        }
+
+        // Method to get total expenses for a specific user
+        public async Task<double> GetTotalExpensesAsync(int userId)
+        {
+            try
+            {
+                // Fetch transactions of type "Expense" for the specific user and sum the amounts
+                var expenseTransactions = await connection.Table<Transactions>()
+                    .Where(t => t.TransactionType == "Expense" && t.UserId == userId)
+                    .ToListAsync();
+
+                return expenseTransactions.Sum(t => t.Amount);  // Return the sum of amounts
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching total expenses: {ex.Message}");
+                return 0;  // Return 0 if any error occurs
+            }
+        }
+
+        // Method to get total debt for a specific user
+        public async Task<double> GetTotalDebtAsync(int userId)
+        {
+            try
+            {
+                // Fetch all debts for the specific user and sum the amounts
+                var debts = await connection.Table<Debt>()
+                    .Where(d => d.UserId == userId)
+                    .ToListAsync();
+
+                // Return the sum of all debts
+                return debts.Sum(d => d.Amount);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching total debt: {ex.Message}");
+                return 0;  // Return 0 if any error occurs
+            }
+        }
+
+        // Method to get all debts for a specific user
+        public async Task<List<Debt>> GetDebtsAsync(int userId)
+        {
+            try
+            {
+                // Fetch all debts for the specific user
+                var debts = await connection.Table<Debt>()
+                    .Where(d => d.UserId == userId)
+                    .ToListAsync();
+
+                return debts;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching debts: {ex.Message}");
+                return new List<Debt>();  // Return an empty list if there's an error
+            }
+        }
+
+        // Method to get all tags from the database
+        public async Task<List<Tag>> GetAllTagsAsync()
+        {
+            return await connection.Table<Tag>().ToListAsync();
+        }
+
+
+        // Method to get a tag by its name
+        public async Task<Tag> GetTagByNameAsync(string name)
+        {
+            // Use the LIKE operator for case-insensitive comparison in SQLite
+            return await connection.Table<Tag>()
+                                   .FirstOrDefaultAsync(t => t.Name.ToLower() == name.ToLower());
+        }
+
+
+        // Asynchronous method to create a new tag
+        public async Task CreateTagAsync(Tag newTag)
+        {
+            await connection.InsertAsync(newTag);
+        }
+
+        // Method to link a transaction with a tag
+        public async Task LinkTransactionWithTag(int transactionId, int tagId)
+        {
+            var transactionTag = new TransactionTag
+            {
+                TransactionId = transactionId,
+                TagId = tagId
+            };
+            await connection.InsertAsync(transactionTag);
+        }
+
     }
 }

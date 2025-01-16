@@ -1,15 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using SQLite;
+using System.ComponentModel.DataAnnotations;
 
-namespace Hisaabkitaab.Components.Model
+namespace Hisaabkitaab.Components.Model;
+
+public class User
 {
-    public class User
-    {
-        public string Email { get; set; }
-        public string Password { get; set; }
-    }
+    [PrimaryKey, AutoIncrement]
 
+    public int Id { get; set; }
+
+
+    public string Username { get; set; }
+
+    [Required, Unique]
+    public string Email { get; set; }
+
+    [Required]
+    public string Password { get; set; }
+
+
+    public string Currency { get; set; }
 }

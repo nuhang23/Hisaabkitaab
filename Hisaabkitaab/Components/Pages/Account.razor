@@ -1,4 +1,6 @@
 ﻿@using MudBlazor;
+@using Hisaabkitaab.Components.Model
+@using Hisaabkitaab.Components.Services
 @page "/account"
 
 <h3>Account</h3>
@@ -7,6 +9,7 @@
     <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
     <MudSpacer />
 </MudAppBar>
+
 <MudDrawer @bind-Open="drawerOpen" Anchor="Anchor.Left" Color="Color.Dark" Elevation="4">
     <MudNavMenu>
         <MudNavLink Href="/dashboard" Match="NavLinkMatch.All">Dashboard</MudNavLink>
@@ -15,47 +18,221 @@
     </MudNavMenu>
 </MudDrawer>
 
-
+<!-- Balance Card -->
 <MudCard>
     <MudCardHeader>
         <CardHeaderContent>
-            <MudText Typo="Typo.h6">Balance </MudText>
+            <MudText Typo="Typo.h6">Balance</MudText>
         </CardHeaderContent>
         <CardHeaderActions>
-            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Default" />
             <MudCardActions>
-                <MudButton Variant="Variant.Filled" Color="Color.Dark">Transfer</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Dark" @onclick="ShowTransferForm">Transfer</MudButton>
             </MudCardActions>
         </CardHeaderActions>
     </MudCardHeader>
     <MudCardContent>
-        <MudText>Rs 500000</MudText>
+        <MudText>Rs @balanceAmount</MudText> <!-- This will dynamically show the balance -->
     </MudCardContent>
-    
 </MudCard>
 
+<!-- Transfer Form -->
+@if (isTransferFormVisible)
+{
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">Transfer Funds</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudTextField @bind-Value="transferAmount" Label="Amount to Transfer" Variant="Variant.Filled" FullWidth />
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SubmitTransfer">Submit Transfer</MudButton>
+            <MudButton Variant="Variant.Text" OnClick="CancelTransferForm">Cancel</MudButton>
+        </MudCardActions>
+    </MudCard>
+}
+
+<!-- Debt Card -->
 <MudCard>
     <MudCardHeader>
         <CardHeaderContent>
-            <MudText Typo="Typo.h6">Debit</MudText>
+            <MudText Typo="Typo.h6">Debt</MudText>
         </CardHeaderContent>
         <CardHeaderActions>
-            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Default" />
+            <MudCardActions>
+                <MudButton Variant="Variant.Filled" Color="Color.Dark" @onclick="ShowDebtForm">Add Debt</MudButton>
+            </MudCardActions>
         </CardHeaderActions>
     </MudCardHeader>
     <MudCardContent>
-        <MudText Color="Color.Error">Rs 500000</MudText>
-
+        <MudText Color="Color.Error">Rs @totalDebtAmount</MudText> <!-- Display the total debt amount dynamically -->
     </MudCardContent>
-
 </MudCard>
 
+<!-- Add Debt Form -->
+@if (isDebtFormVisible)
+{
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">Add Debt</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudTextField @bind-Value="newDebt.Title" Label="Title" Variant="Variant.Filled" FullWidth />
+            <MudTextField @bind-Value="newDebt.Source" Label="Source" Variant="Variant.Filled" FullWidth class="mt-3" />
+            <MudTextField @bind-Value="newDebt.Status" Label="Status" Variant="Variant.Filled" FullWidth class="mt-3" />
+            <MudTextField @bind-Value="newDebt.Amount" Label="Amount" Variant="Variant.Filled" FullWidth class="mt-3" />
+            <MudTextField @bind-Value="newDebt.DueDate" Label="Due Date" Variant="Variant.Filled" FullWidth class="mt-3" />
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SubmitDebt">Submit</MudButton>
+            <MudButton Variant="Variant.Text" OnClick="CancelDebtForm">Cancel</MudButton>
+        </MudCardActions>
+    </MudCard>
+}
+
+     
 @code {
     private bool drawerOpen = false;
+    private bool isTransferFormVisible = false;
+    private bool isDebtFormVisible = false;
+    private double transferAmount;
+    private double balanceAmount; // Dynamically calculated balance
+    private Debt newDebt = new Debt();
+    private List<Debt> debts = new List<Debt>(); // List of debts to display
+    private double totalIncome; // Total income fetched from the database
+    private double totalExpenses; // Total expenses fetched from the database
+    private double totalDebtAmount; // Total debt amount fetched from the database
+
+    [Inject] private DatabaseServices DbService { get; set; }
+    [Inject] private IDialogService DialogService { get; set; }
 
     private void ToggleDrawer()
     {
         drawerOpen = !drawerOpen;
     }
-   
+
+    private void ShowTransferForm()
+    {
+        isTransferFormVisible = true;
+    }
+
+    private void CancelTransferForm()
+    {
+        isTransferFormVisible = false;
+        transferAmount = 0; // Reset transfer amount
+    }
+
+    private void ShowDebtForm()
+    {
+        isDebtFormVisible = true;
+    }
+
+    private async Task SubmitTransfer()
+    {
+        if (transferAmount <= 0)
+        {
+            return;
+        }
+
+        if (transferAmount > balanceAmount)
+        {
+            var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small };
+            DialogService.Show<MudDialog>("Insufficient Balance", options);
+            return;
+        }
+
+        if (debts.Count > 0 && transferAmount > debts[0].Amount)
+        {
+            var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small };
+            DialogService.Show<MudDialog>("Transfer Amount Greater Than Debt", options);
+            return;
+        }
+
+        try
+        {
+            // Update balance
+            balanceAmount -= transferAmount;
+
+            // Now reduce the debt (this example assumes one debt entry)
+            var debtToClear = debts[0];
+            debtToClear.Amount -= transferAmount;
+
+            if (debtToClear.Amount <= 0)
+            {
+                debtToClear.Status = "Paid"; // Mark as paid if debt is cleared
+            }
+
+            await DbService.UpdateDebtAsync(debtToClear);  // Update debt in DB
+            CancelTransferForm();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+
+    private async Task SubmitDebt()
+    {
+        if (string.IsNullOrWhiteSpace(newDebt.Title) || newDebt.Amount <= 0 || string.IsNullOrWhiteSpace(newDebt.Status))
+        {
+            return;
+        }
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(newDebt.Status))
+            {
+                newDebt.Status = "Pending"; // Set default status if empty
+            }
+
+            newDebt.CreatedAt = DateTime.Now;
+            newDebt.UpdatedAt = DateTime.Now;
+
+            // Save the new debt to the database
+            await DbService.SaveDebtAsync(newDebt);
+
+            // After saving, update the list of debts (this step was missing in your previous implementation)
+            debts = await DbService.GetDebtsAsync(newDebt.UserId); // Ensure you fetch updated list after saving
+
+            // Also, recalculate the total debt amount and update balance
+            totalDebtAmount = await DbService.GetTotalDebtAsync(newDebt.UserId); // Fetch updated total debt amount
+
+            // Recalculate the balance based on the new total debt
+            balanceAmount = totalIncome - totalExpenses + totalDebtAmount;
+
+            // Clear the form after submission
+            CancelDebtForm();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+
+    private void CancelDebtForm()
+    {
+        isDebtFormVisible = false;
+        newDebt = new Debt(); // Reset the form
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await DbService.GetUserByEmailAsync("user@example.com");
+
+        if (user != null)
+        {
+            // Fetch total income, expenses, and debts
+            totalIncome = await DbService.GetTotalIncomeAsync(user.Id);
+            totalExpenses = await DbService.GetTotalExpensesAsync(user.Id);
+            debts = await DbService.GetDebtsAsync(user.Id);  // Fetch debts
+            totalDebtAmount = await DbService.GetTotalDebtAsync(user.Id); // Fetch total debt amount
+
+            // Calculate balance dynamically
+            balanceAmount = await DbService.GetBalanceAsync(user.Id); // Use the GetBalanceAsync method
+        }
+    }
 }
