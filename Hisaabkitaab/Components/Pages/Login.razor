@@ -26,12 +26,16 @@
 @code {
     [Inject]
     private DatabaseServices DbService { get; set; }
+    [Inject]
+    private NavigationManager  navigationManager{ get; set; }
 
     private string Email { get; set; }
     private string Password { get; set; }
 
     private async Task HandleSignIn()
     {
+
+        navigationManager.NavigateTo("/dashboard");
         // Ensure both email and password are provided
         if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password))
         {
