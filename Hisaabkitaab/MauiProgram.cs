@@ -29,6 +29,7 @@ namespace Hisaabkitaab
 
 
 
+
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
     		builder.Logging.AddDebug();

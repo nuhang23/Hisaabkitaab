@@ -1,10 +1,5 @@
-﻿using Hisaabkitaab.Components.Model;
-using SQLite;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using SQLite;
+using Hisaabkitaab.Components.Model;
 
 namespace Hisaabkitaab.Components.Services
 {
@@ -66,6 +61,14 @@ namespace Hisaabkitaab.Components.Services
                 Console.WriteLine($"Error inserting transaction: {ex.Message}");
             }
         }
+        public async Task<List<Transactions>> GetTransactionsAsync()
+        {
+            // Fetch all transactions, sorted by date, without filtering by userId
+            return await connection.Table<Transactions>()
+                                   .OrderByDescending(t => t.CreatedAt)  // Sorting by date
+                                   .ToListAsync();  // Asynchronously fetching the data
+        }
+
 
         // Asynchronous method to update an existing transaction
         public async Task UpdateTransaction(Transactions updatedTransaction)
@@ -81,6 +84,9 @@ namespace Hisaabkitaab.Components.Services
                 Console.WriteLine($"Error updating transaction: {ex.Message}");
             }
         }
+
+
+
 
         // Method to get all transactions of a specific type (e.g., "Income" or "Expense")
         public async Task<List<Transactions>> GetTransactionsByTypeAsync(string transactionType)
@@ -101,6 +107,7 @@ namespace Hisaabkitaab.Components.Services
                 return new List<Transactions>();
             }
         }
+
 
         // Asynchronous method to save debt to the database
         public async Task SaveDebtAsync(Debt debt)
@@ -250,5 +257,168 @@ namespace Hisaabkitaab.Components.Services
             await connection.InsertAsync(transactionTag);
         }
 
+        public async Task<List<Transactions>> GetFilteredTransactionsAsync(
+    string title = null,
+    string transactionType = null,
+    string tag = null,
+    DateTime? startDate = null,
+    DateTime? endDate = null,
+    bool sortDescending = false)
+        {
+            // Fetch all transactions from the database
+            var transactions = await connection.Table<Transactions>().ToListAsync();
+
+            // Filter by Title
+            if (!string.IsNullOrEmpty(title))
+            {
+                transactions = transactions.Where(t => t.Title.Contains(title, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+
+            // Filter by TransactionType (Income/Expense)
+            if (!string.IsNullOrEmpty(transactionType))
+            {
+                transactions = transactions.Where(t => t.TransactionType.Contains(transactionType, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+
+            // Filter by Tag
+            if (!string.IsNullOrEmpty(tag))
+            {
+                // Retrieve all tags and transaction-tag relations
+                var tags = await connection.Table<Tag>().ToListAsync();
+                var transactionTags = await connection.Table<TransactionTag>().ToListAsync();
+
+                // Get transaction IDs related to the specified tag
+                var tagTransactionIds = transactionTags
+                    .Where(tt => tags.Any(t => t.Id == tt.TagId && t.Name.Contains(tag, StringComparison.OrdinalIgnoreCase)))
+                    .Select(tt => tt.TransactionId)
+                    .ToList();
+
+                // Filter transactions by these tag IDs
+                transactions = transactions.Where(t => tagTransactionIds.Contains(t.Id)).ToList();
+            }
+
+            // Filter by Date Range (start date and/or end date)
+            if (startDate.HasValue)
+            {
+                transactions = transactions.Where(t => t.CreatedAt >= startDate.Value).ToList();
+            }
+            if (endDate.HasValue)
+            {
+                transactions = transactions.Where(t => t.CreatedAt <= endDate.Value).ToList();
+            }
+
+            // Sort by Date (ascending or descending)
+            if (sortDescending)
+            {
+                transactions = transactions.OrderByDescending(t => t.CreatedAt).ToList(); // Sort descending
+            }
+            else
+            {
+                transactions = transactions.OrderBy(t => t.CreatedAt).ToList(); // Sort ascending
+            }
+
+            return transactions;
+        }
+
+
+
+
+        public async Task<List<Transactions>> SearchTransactionsAsync(string searchTerm)
+        {
+            // Perform title search using LIKE (case-insensitive by default in SQLite)
+            var titleMatches = await connection.Table<Transactions>()
+                                                .Where(t => t.Title.Contains(searchTerm)) // LIKE search for title
+                                                .ToListAsync();
+
+            // Search for tags by name using LIKE
+            var tagMatches = await connection.Table<Tag>()
+                                              .Where(tag => tag.Name.Contains(searchTerm)) // LIKE search for tag name
+                                              .ToListAsync();
+
+            // Get the TransactionIds that match the tags
+            var tagTransactionIds = new List<int>();
+
+            foreach (var tag in tagMatches)
+            {
+                var transactionTags = await connection.Table<TransactionTag>()
+                                                      .Where(tt => tt.TagId == tag.Id)
+                                                      .ToListAsync();
+                tagTransactionIds.AddRange(transactionTags.Select(tt => tt.TransactionId));
+            }
+
+            // Combine the matching transaction IDs from title and tag searches, ensuring no duplicates
+            var matchingTransactionIds = titleMatches.Select(t => t.Id).Concat(tagTransactionIds).Distinct().ToList();
+
+            // Fetch the transactions based on the matching IDs
+            var matchingTransactions = await connection.Table<Transactions>()
+                                                       .Where(t => matchingTransactionIds.Contains(t.Id))
+                                                       .ToListAsync();
+
+            return matchingTransactions;
+        }
+
+        public async Task<List<Transactions>> GetFilteredTransactionsAsync(DateTime startDate, DateTime endDate, string searchTerm)
+        {
+            try
+            {
+                // Perform title search using LIKE (case-insensitive by default in SQLite)
+                var titleMatches = await connection.Table<Transactions>()
+                                                    .Where(t => t.Title.Contains(searchTerm)
+                                                            && t.CreatedAt >= startDate
+                                                            && t.CreatedAt <= endDate)
+                                                    .ToListAsync();
+
+                // Search for tags by name using LIKE
+                var tagMatches = await connection.Table<Tag>()
+                                                  .Where(tag => tag.Name.Contains(searchTerm)) // LIKE search for tag name
+                                                  .ToListAsync();
+
+                // Get the TransactionIds that match the tags
+                var tagTransactionIds = new List<int>();
+
+                foreach (var tag in tagMatches)
+                {
+                    var transactionTags = await connection.Table<TransactionTag>()
+                                                          .Where(tt => tt.TagId == tag.Id)
+                                                          .ToListAsync();
+                    tagTransactionIds.AddRange(transactionTags.Select(tt => tt.TransactionId));
+                }
+
+                // Combine the matching transaction IDs from title and tag searches, ensuring no duplicates
+                var matchingTransactionIds = titleMatches.Select(t => t.Id)
+                                                          .Concat(tagTransactionIds)
+                                                          .Distinct()
+                                                          .ToList();
+
+                // Fetch the transactions based on the matching IDs
+                var matchingTransactions = await connection.Table<Transactions>()
+                                                           .Where(t => matchingTransactionIds.Contains(t.Id))
+                                                           .ToListAsync();
+
+                // Filter by date range
+                matchingTransactions = matchingTransactions
+                                       .Where(t => t.CreatedAt >= startDate && t.CreatedAt <= endDate)
+                                       .ToList();
+
+                return matchingTransactions;
+            }
+            catch (Exception ex)
+            {
+                // Handle any errors (e.g., database connectivity issues)
+                Console.WriteLine($"Error filtering transactions: {ex.Message}");
+                return new List<Transactions>();
+            }
+        }
+        public async Task<List<int>> GetTransactionsByTagIdAsync(int tagId)
+        {
+            var transactionTags = await connection.Table<TransactionTag>()
+                                                   .Where(tt => tt.TagId == tagId)
+                                                   .ToListAsync();
+
+            return transactionTags.Select(tt => tt.TransactionId).ToList();
+        }
+
+
+
     }
-}
+} 

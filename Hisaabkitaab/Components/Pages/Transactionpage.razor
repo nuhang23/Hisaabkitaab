@@ -3,12 +3,12 @@
 @using Hisaabkitaab.Components.Model
 @using Hisaabkitaab.Components.Services
 
-<MudAppBar Color="Color.Primary" Fixed="true">
+<MudAppBar Color="Color.Dark" Fixed="true">
     <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
     <MudSpacer />
 </MudAppBar>
 
-<MudDrawer @bind-Open="drawerOpen" Anchor="Anchor.Left" Color="Color.Dark" Elevation="4">
+<MudDrawer @bind-Open="drawerOpen" Anchor="Anchor.Left" Color="Color.Dark" Elevation="0">
     <MudNavMenu>
         <MudNavLink Href="/dashboard" Match="NavLinkMatch.All">Dashboard</MudNavLink>
         <MudNavLink Href="/account" Match="NavLinkMatch.Prefix">Account</MudNavLink>
@@ -17,6 +17,55 @@
 </MudDrawer>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4 mx-auto mt-10">
+    <!-- Search Bar and Filter Section -->
+    <MudGrid>
+        <MudItem xs="12" md="8">
+            <MudTextField @bind-Value="SearchQuery" Label="Search Transactions" Variant="Variant.Filled" FullWidth Class="mb-4"
+                          Adornment="Adornment.Start" Icon="@Icons.Material.Filled.Search" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudStack AlignItems="AlignItems.Center" Style="width:650px; height:450px">
+                <!-- Set the PickerVariant to Dialog directly -->
+                <MudDateRangePicker PickerVariant="PickerVariant.Dialog" @bind-DateRange="@_dateRange" Margin="Margin.Dense" />
+            </MudStack>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2">
+            <MudButton Variant="Variant.Filled" Color="Color.Dark" FullWidth OnClick="ApplyFilters" Class="mt-4">
+                Filter
+            </MudButton>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2">
+            <MudIconButton Icon="@Icons.Material.Filled.Search" Color="Color.Primary" OnClick="SearchTransactions" Class="mt-4" />
+        </MudItem>
+    </MudGrid>
+
+    <!-- Display Search Results -->
+    @if (filteredTransactionsList.Any())
+    {
+        <MudGrid>
+            <MudItem xs="12">
+                <MudTable Items="filteredTransactionsList" Hover="true" Bordered="true">
+                    <HeaderContent>
+                        <MudTh>Title</MudTh>
+                        <MudTh>Amount</MudTh>
+                        <MudTh>Note</MudTh>
+                        <MudTh>Created At</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Title">@context.Title</MudTd>
+                        <MudTd DataLabel="Amount">@context.Amount</MudTd>
+                        <MudTd DataLabel="Note">@context.Note</MudTd>
+                        <MudTd DataLabel="Created At">@context.CreatedAt.ToString("MM/dd/yyyy")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudItem>
+        </MudGrid>
+    }
+    else if (!string.IsNullOrEmpty(SearchQuery))
+    {
+        <MudText>No results found for "@SearchQuery".</MudText>
+    }
+
     <!-- Transaction Cards and Tables -->
     <MudGrid>
         <!-- Income Card -->
@@ -89,20 +138,13 @@
                 </MudCardHeader>
                 <MudCardContent>
                     <MudTextField @bind-Value="Title" Label="Title" Variant="Variant.Filled" FullWidth />
-
-                    <!-- Select Transaction Type -->
                     <MudSelect @bind-Value="TransactionType" Label="Transaction Type" Variant="Variant.Filled" FullWidth class="mt-3">
                         <MudSelectItem Value="Income">Income</MudSelectItem>
                         <MudSelectItem Value="Expense">Expense</MudSelectItem>
                     </MudSelect>
-
                     <MudTextField @bind-Value="Amount" Label="Amount" Variant="Variant.Filled" FullWidth class="mt-3" />
                     <MudTextField @bind-Value="Note" Label="Note (Optional)" Variant="Variant.Filled" FullWidth class="mt-3" />
-
-                    <!-- Tag Input Section -->
                     <MudTextField @bind-Value="TagInput" Label="Enter or Select Tag" Variant="Variant.Filled" FullWidth class="mt-3" />
-
-                    <!-- Tag Selection with MudSelect -->
                     <MudSelect T="Tag" @bind-Value="SelectedTag" Label="Select Existing Tag" FullWidth class="mt-3">
                         @foreach (var tag in allTags)
                         {
@@ -119,42 +161,89 @@
     </MudGrid>
 }
 
+
 @code {
     private string Income = "Income";
     private string Expense = "Expense";
-
     private string Title { get; set; }
     private string TransactionType { get; set; }
     private double Amount { get; set; }
     private string Note { get; set; }
     private string TagInput { get; set; }
-    private Tag SelectedTag { get; set; } // Keep it null
-
+    private Tag SelectedTag { get; set; }
+    private string SearchQuery { get; set; } = string.Empty;
     private bool isFormVisible = false;
     private bool drawerOpen = false;
+
+    // Date Range Picker variables
+    private PickerVariant _variant = PickerVariant.Dialog;  // Set default variant to Dialog
+    private DateRange _dateRange { get; set; }
 
     private List<Transactions> incomeTransactions = new List<Transactions>();
     private List<Transactions> expenseTransactions = new List<Transactions>();
     private List<Tag> allTags = new List<Tag>();
+    private List<Transactions> filteredTransactionsList = new List<Transactions>();
 
     [Inject] private DatabaseServices DbService { get; set; }
 
-    // Method to search tags
-    private async Task<List<Tag>> SearchTags(string value)
+    // Method to apply filters and search transactions by Date, Title, Type, and Tag
+    private async Task ApplyFilters()
     {
-        var tags = await DbService.GetAllTagsAsync();
-        return tags.Where(t => t.Name.Contains(value, StringComparison.OrdinalIgnoreCase)).ToList();
-    }
+        // Fetch all transactions to begin filtering
+        filteredTransactionsList = await DbService.GetTransactionsAsync();
 
-    // Method to submit the transaction
-    // Method to submit the transaction
-    private async Task SubmitTransaction()
-    {
-        if (string.IsNullOrEmpty(Title) || Amount == 0 || string.IsNullOrEmpty(TransactionType))
+        // Filter by Date Range (if available)
+        if (_dateRange != null && _dateRange.Start != null && _dateRange.End != null)
         {
-            return;
+            filteredTransactionsList = filteredTransactionsList
+                .Where(t => t.CreatedAt >= _dateRange.Start.Value && t.CreatedAt <= _dateRange.End.Value)
+                .ToList();
         }
 
+        // Filter by Transaction Type (Income/Expense)
+        if (!string.IsNullOrEmpty(TransactionType))
+        {
+            filteredTransactionsList = filteredTransactionsList
+                .Where(t => t.TransactionType == TransactionType)
+                .ToList();
+        }
+
+        // Filter by Title (based on the search query)
+        if (!string.IsNullOrEmpty(SearchQuery))
+        {
+            filteredTransactionsList = filteredTransactionsList
+                .Where(t => t.Title.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        // Filter by Tag (if a tag is selected)
+        if (SelectedTag != null)
+        {
+            // Assuming DbService.GetTransactionsByTagIdAsync returns a list of transaction IDs associated with a tag
+            var tagTransactionIds = await DbService.GetTransactionsByTagIdAsync(SelectedTag.Id);
+
+            filteredTransactionsList = filteredTransactionsList
+                .Where(t => tagTransactionIds.Contains(t.Id))
+                .ToList();
+        }
+    }
+
+    // Method to search transactions based on title or tag
+    private async Task SearchTransactions()
+    {
+        filteredTransactionsList = await DbService.SearchTransactionsAsync(SearchQuery);
+    }
+
+    // Submit new transaction to the database
+    private async Task SubmitTransaction()
+    {
+        // Validate input fields
+        if (string.IsNullOrEmpty(Title) || Amount == 0 || string.IsNullOrEmpty(TransactionType))
+        {
+            return; // Stop the method if the essential fields are missing
+        }
+
+        // Create new transaction
         var newTransaction = new Transactions
             {
                 Title = Title,
@@ -165,78 +254,64 @@
                 UpdatedAt = DateTime.Now
             };
 
-        // Create the transaction in the database
+        // Save the transaction to the database
         await DbService.CreateTransaction(newTransaction);
 
         // Handle the tag input or selected tag
         Tag tagToLink = null;
 
-        // Check if the user entered a new tag
         if (!string.IsNullOrEmpty(TagInput))
         {
             var existingTag = await DbService.GetTagByNameAsync(TagInput);
 
             if (existingTag == null)
             {
-                // Create a new tag if it doesn't exist
+                // If the tag doesn't exist, create a new one
                 var newTag = new Tag { Name = TagInput, CreatedAt = DateTime.Now };
                 await DbService.CreateTagAsync(newTag);
                 tagToLink = newTag;
             }
             else
             {
-                tagToLink = existingTag; // Use the existing tag
+                tagToLink = existingTag;
             }
         }
         else if (SelectedTag != null)
         {
-            // If the user selects an existing tag, link it
             tagToLink = SelectedTag;
         }
 
-        // Link the transaction with the tag (if a tag was selected or created)
         if (tagToLink != null)
         {
+            // Link the transaction with the tag
             await DbService.LinkTransactionWithTag(newTransaction.Id, tagToLink.Id);
         }
 
-        // Refresh the transactions list after submission
+        // Refresh the transactions list for Income and Expense types
         incomeTransactions = await DbService.GetTransactionsByTypeAsync(Income);
         expenseTransactions = await DbService.GetTransactionsByTypeAsync(Expense);
-
-        // Reset form fields
-        CancelForm();
     }
 
-    // Method to cancel the form and reset fields
+    private void ToggleFormVisibility()
+    {
+        isFormVisible = !isFormVisible;  // Toggle the visibility
+    }
+
+    // Method to reset the form and hide it
     private void CancelForm()
     {
-        isFormVisible = false;
-        Title = string.Empty;
-        Amount = 0;
-        TransactionType = string.Empty;
-        Note = string.Empty;
-        TagInput = string.Empty;
-        SelectedTag = null; // Keep it null after cancellation
+        isFormVisible = false;  // Hide the form when canceled
     }
 
-    // Method to toggle the drawer
+    // Update PickerVariant on toggle change
+    private void OnValueChanged(PickerVariant variant)
+    {
+        _dateRange = null; // Reset the date range when changing the picker variant
+        _variant = variant;
+    }
+
     private void ToggleDrawer()
     {
         drawerOpen = !drawerOpen;
-    }
-
-    // Initialize the page by loading transactions and tags
-    protected override async Task OnInitializedAsync()
-    {
-        incomeTransactions = await DbService.GetTransactionsByTypeAsync(Income);
-        expenseTransactions = await DbService.GetTransactionsByTypeAsync(Expense);
-        allTags = await DbService.GetAllTagsAsync();
-    }
-
-    // Method to toggle the visibility of the form
-    private void ToggleFormVisibility()
-    {
-        isFormVisible = !isFormVisible;
     }
 }

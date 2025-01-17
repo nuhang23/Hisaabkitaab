@@ -1,8 +1,10 @@
-﻿
-@page "/dashboard"
+﻿@page "/dashboard"
+@using Hisaabkitaab.Components.Model;
+@using Hisaabkitaab.Components.Services;
+
 <h3>Dashboard</h3>
 
-<MudAppBar Color="Color.Primary" Fixed="true">
+<MudAppBar Color="Color.Dark" Fixed="true">
     <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
     <MudSpacer />
 </MudAppBar>
@@ -13,7 +15,9 @@
         <MudNavLink Href="/transactions" Match="NavLinkMatch.Prefix">Transaction</MudNavLink>
     </MudNavMenu>
 </MudDrawer>
+
 <MudGrid>
+    <!-- Balance Card -->
     <MudItem xs="12" sm="4">
         <MudCard>
             <MudCardHeader>
@@ -30,6 +34,7 @@
         </MudCard>
     </MudItem>
 
+    <!-- Expense Card -->
     <MudItem xs="12" sm="4">
         <MudCard>
             <MudCardHeader>
@@ -41,11 +46,12 @@
                 </CardHeaderActions>
             </MudCardHeader>
             <MudCardContent>
-                <MudText Typo="Typo.body1">Rs 20,000</MudText>
+                <MudText Typo="Typo.body1">Rs 10,000</MudText>
             </MudCardContent>
         </MudCard>
     </MudItem>
 
+    <!-- Debt Card -->
     <MudItem xs="12" sm="4">
         <MudCard>
             <MudCardHeader>
@@ -62,12 +68,90 @@
         </MudCard>
     </MudItem>
 </MudGrid>
+<MudGrid>
+    <!-- Highest Transaction Card -->
+    <MudItem xs="12" class="mb-4">
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Highest Transaction</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (highestTransaction != null)
+                {
+                    <MudText Typo="Typo.body1">Title: @highestTransaction.Title</MudText>
+                    <MudText Typo="Typo.body1">Amount: Rs @highestTransaction.Amount</MudText>
+                    <MudText Typo="Typo.body1">Date: @highestTransaction.CreatedAt.ToString("dd/MM/yyyy")</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body1">No transactions available</MudText>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <!-- Lowest Transaction Card -->
+    <MudItem xs="12">
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Lowest Transaction</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (lowestTransaction != null)
+                {
+                    <MudText Typo="Typo.body1">Title: @lowestTransaction.Title</MudText>
+                    <MudText Typo="Typo.body1">Amount: Rs @lowestTransaction.Amount</MudText>
+                    <MudText Typo="Typo.body1">Date: @lowestTransaction.CreatedAt.ToString("dd/MM/yyyy")</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body1">No transactions available</MudText>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+
 
 @code {
     private bool drawerOpen = false;
+    
 
     private void ToggleDrawer()
     {
         drawerOpen = !drawerOpen;
     }
+
+    private List<Transactions> transactions = new List<Transactions>();
+    private Transactions highestTransaction = null;
+    private Transactions lowestTransaction = null;
+
+    [Inject] private DatabaseServices DbService { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var userId = 1; // Replace with actual userId logic, e.g., from authentication
+
+        // Fetch all transactions for the user
+        transactions = await DbService.GetTransactionsAsync();
+
+        // Find the transaction with the highest amount
+        if (transactions.Any())
+        {
+            highestTransaction = transactions.OrderByDescending(t => t.Amount).FirstOrDefault();
+        }
+        if (transactions.Any())
+        {
+            lowestTransaction = transactions.OrderBy(t => t.Amount).FirstOrDefault();
+        }
+
+
+    }
+
+
 }
